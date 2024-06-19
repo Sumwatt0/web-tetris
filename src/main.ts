@@ -21,15 +21,18 @@ const PIECES = [
     [[1, 1, 0], [0, 1, 1]],
 ]
 
-
 class Piece {
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
   colorVal: number;
   shape: number[][];
+  coords: [number, number][] = [];
   constructor(shape: number[][], color?: string) {
     if (color !== undefined && this.colors.includes(color)) {this.colorVal = this.colors.indexOf(color)+1;}
     else {this.colorVal = Math.floor(Math.random()*this.colors.length)+1;}
     this.shape = shape.map((row) => row.map((value) => value == 1 ? this.colorVal : value));
+  }
+  move(x: number, y: number) {
+    this.coords = this.coords.map((value) => {return [value[0]+y, value[1]+x]});
   }
 }
 
@@ -46,9 +49,26 @@ class Grid {
     const startingCol = Math.floor((this.grid[0].length - piece.shape[0].length) / 2);
     for (let row = 0; row < piece.shape.length; row++) {
       for (let col = 0; col < piece.shape[row].length; col++) {
-        this.grid[row][startingCol+col] = piece.shape[row][col];
+        if (piece.shape[row][col] !== 0) {
+          this.grid[row][startingCol+col] = piece.shape[row][col];
+          piece.coords.push([row, (startingCol+col)])
+        }
       }
     }
+  }
+  clearPiece(piece: Piece) {
+    for (let coord = 0; coord < piece.coords.length; coord++) {
+      this.grid[piece.coords[coord][0]][piece.coords[coord][1]] = 0;
+    }
+  }
+  drawPiece(piece: Piece) {
+    for (let coord = 0; coord < piece.coords.length; coord++) {
+      this.grid[piece.coords[coord][0]][piece.coords[coord][1]] = piece.colorVal;
+    }
+  }
+  updatePiece(piece: Piece) {
+    this.clearPiece(piece);
+    this.drawPiece(piece);
   }
   drawGrid(fill: string, stroke: string, weight: number) {
     for (let row = 0; row < this.grid.length; row++) {
@@ -68,11 +88,50 @@ class Grid {
   }
 }
 
-
-ctx.beginPath();
 const game = new Grid(20, 10);
 const one = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
 game.addPiece(one);
-game.drawGrid('black', 'white', 1);
-ctx.stroke();
+//one.coords = one.coords.map((value) => {return [value[0]+1, value[1]]});
 
+function draw() {
+  window.requestAnimationFrame(draw);
+  ctx.clearRect(0, 0, screen.width, screen.height);
+  game.clearPiece(one);
+  game.drawPiece(one);
+  game.drawGrid('black', 'white', 1);
+  ctx.stroke();
+}
+
+function movePiece(x: number, y: number) {
+  game.clearPiece(one);
+  one.move(x, y);
+  game.drawPiece(one);
+}
+
+window.addEventListener('keydown', keyDown);
+function keyDown(e: KeyboardEvent) {
+  if (e?.defaultPrevented) {
+    return;
+  }
+  switch(e.code) {
+    case "ArrowDown":
+    case "KeyS":
+      movePiece(0, 1);
+      break;
+    case "ArrowUp":
+    case "KeyW":
+      movePiece(0, -1);
+      break;
+    case "ArrowLeft":
+    case "KeyA":
+      movePiece(-1, 0);
+      break;
+    case "ArrowRight":
+    case "KeyD":
+      movePiece(1, 0)
+      break;
+  }
+  e.preventDefault();
+}
+
+draw();
