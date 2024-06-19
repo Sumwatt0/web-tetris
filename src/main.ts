@@ -31,8 +31,15 @@ class Piece {
     else {this.colorVal = Math.floor(Math.random()*this.colors.length)+1;}
     this.shape = shape.map((row) => row.map((value) => value == 1 ? this.colorVal : value));
   }
-  move(x: number, y: number) {
-    this.coords = this.coords.map((value) => {return [value[0]+y, value[1]+x]});
+  move(x: number, y: number, grid: Grid) {
+    const newCoords = this.coords.map((value) => {return [value[0]+y, value[1]+x] as [number, number]});
+    if (this.isValidMove(newCoords, grid)) {this.coords = newCoords; return true;}
+    else {return false;}
+  }
+  isValidMove(newCoords: [number, number][], grid: Grid) {
+    return newCoords.every(([row, col]) => {
+      return row >= 0 && row < grid.grid.length && col >= 0 && col < grid.grid[0].length && grid.grid[row][col] === 0;
+    });
   }
 }
 
@@ -89,23 +96,27 @@ class Grid {
 }
 
 const game = new Grid(20, 10);
-const one = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
-game.addPiece(one);
-//one.coords = one.coords.map((value) => {return [value[0]+1, value[1]]});
+const currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
+game.addPiece(currPiece);
 
 function draw() {
   window.requestAnimationFrame(draw);
   ctx.clearRect(0, 0, screen.width, screen.height);
-  game.clearPiece(one);
-  game.drawPiece(one);
+  game.clearPiece(currPiece);
+  game.drawPiece(currPiece);
   game.drawGrid('black', 'white', 1);
   ctx.stroke();
 }
 
+function update() {
+  movePiece(0, 1);
+}
+setInterval(update, 1000);
+
 function movePiece(x: number, y: number) {
-  game.clearPiece(one);
-  one.move(x, y);
-  game.drawPiece(one);
+  game.clearPiece(currPiece);
+  currPiece.move(x, y, game);
+  game.drawPiece(currPiece);
 }
 
 window.addEventListener('keydown', keyDown);
