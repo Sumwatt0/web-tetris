@@ -12,30 +12,105 @@ function setCanvasDimensions(heightRatio: number) {
 setCanvasDimensions(0.5);
 
 const PIECES = [
-    [[1, 1, 1, 1]],
-    [[1, 1], [1, 1]],
-    [[0, 1, 0], [1, 1, 1]],
-    [[1, 0, 0], [1, 1, 1]],
-    [[0, 0, 1], [1, 1, 1]],
-    [[0, 1, 1], [1, 1, 0]],
-    [[1, 1, 0], [0, 1, 1]],
-]
+  // I piece
+  [[0, 0, 0, 0], 
+   [1, 1, 1, 1], 
+   [0, 0, 0, 0], 
+   [0, 0, 0, 0]],
+  // O piece
+  [[0, 0, 0, 0], 
+   [0, 1, 1, 0], 
+   [0, 1, 1, 0], 
+   [0, 0, 0, 0]],
+  // T piece
+  [[0, 0, 0, 0], 
+   [0, 1, 0, 0],
+   [1, 1, 1, 0], 
+   [0, 0, 0, 0]],
+  // L piece
+  [[0, 0, 0, 0], 
+   [1, 0, 0, 0], 
+   [1, 1, 1, 0], 
+   [0, 0, 0, 0]],
+  // J piece 
+  [[0, 0, 0, 0], 
+   [0, 0, 1, 0], 
+   [1, 1, 1, 0], 
+   [0, 0, 0, 0]],
+  // S piece
+  [[0, 0, 0, 0], 
+   [0, 1, 1, 0], 
+   [1, 1, 0, 0], 
+   [0, 0, 0, 0]],
+  // Z piece 
+  [[0, 0, 0, 0], 
+   [1, 1, 0, 0], 
+   [0, 1, 1, 0], 
+   [0, 0, 0, 0]], 
+];
+
 
 class Piece {
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
   colorVal: number;
   shape: number[][];
   coords: [number, number][] = [];
+  position: [number, number];
+
   constructor(shape: number[][], color?: string) {
-    if (color !== undefined && this.colors.includes(color)) {this.colorVal = this.colors.indexOf(color)+1;}
-    else {this.colorVal = Math.floor(Math.random()*this.colors.length)+1;}
+    if (color !== undefined && this.colors.includes(color)) {
+      this.colorVal = this.colors.indexOf(color) + 1;
+    } else {
+      this.colorVal = Math.floor(Math.random() * this.colors.length) + 1;
+    }
     this.shape = shape.map((row) => row.map((value) => value == 1 ? this.colorVal : value));
+    this.position = [-1, 3]; // starting position
+    this.updateCoords();
   }
+
+  updateCoords() {
+    this.coords = [];
+    for (let row = 0; row < this.shape.length; row++) {
+      for (let col = 0; col < this.shape[row].length; col++) {
+        if (this.shape[row][col] !== 0) {
+          this.coords.push([this.position[0] + row, this.position[1] + col]);
+        }
+      }
+    }
+  }
+
+  rotate(grid: Grid) {
+    const newShape = this.shape[0].map((_, colIndex) =>
+      this.shape.map(row => row[colIndex]).reverse()
+    );
+
+    const newCoords = [];
+    for (let row = 0; row < newShape.length; row++) {
+      for (let col = 0; col < newShape[row].length; col++) {
+        if (newShape[row][col] !== 0) {
+          newCoords.push([this.position[0] + row, this.position[1] + col] as [number, number]);
+        }
+      }
+    }
+
+    if (this.isValidMove(newCoords, grid)) {
+      this.shape = newShape;
+      this.updateCoords();
+    }
+  }
+
   move(x: number, y: number, grid: Grid) {
-    const newCoords = this.coords.map((value) => {return [value[0]+y, value[1]+x] as [number, number]});
-    if (this.isValidMove(newCoords, grid)) {this.coords = newCoords; return true;}
-    else {return false;}
+    const newCoords = this.coords.map((value) => [value[0] + y, value[1] + x] as [number, number]);
+    if (this.isValidMove(newCoords, grid)) {
+      this.position[0] += y;
+      this.position[1] += x;
+      this.updateCoords();
+      return true;
+    } else {
+      return false;
+    }
   }
+
   isValidMove(newCoords: [number, number][], grid: Grid) {
     return newCoords.every(([row, col]) => {
       return row >= 0 && row < grid.grid.length && col >= 0 && col < grid.grid[0].length && grid.grid[row][col] === 0;
@@ -50,46 +125,41 @@ class Grid {
   // Normal Tetris Grid is 10x20
   constructor(rows: number, cols: number) {
     this.grid = Array.from({ length: rows }).map(() => Array.from({ length: cols }).map(() => 0));
-    this.squareSize = [screen.width/cols, screen.height/rows];
+    this.squareSize = [screen.width / cols, screen.height / rows];
   }
+
   addPiece(piece: Piece) {
-    const startingCol = Math.floor((this.grid[0].length - piece.shape[0].length) / 2);
-    for (let row = 0; row < piece.shape.length; row++) {
-      for (let col = 0; col < piece.shape[row].length; col++) {
-        if (piece.shape[row][col] !== 0) {
-          this.grid[row][startingCol+col] = piece.shape[row][col];
-          piece.coords.push([row, (startingCol+col)])
-        }
-      }
-    }
+    piece.updateCoords();
+    piece.coords.forEach(([row, col]) => {
+      this.grid[row][col] = piece.colorVal;
+    });
   }
+
   clearPiece(piece: Piece) {
-    for (let coord = 0; coord < piece.coords.length; coord++) {
-      this.grid[piece.coords[coord][0]][piece.coords[coord][1]] = 0;
-    }
+    piece.coords.forEach(([row, col]) => {
+      this.grid[row][col] = 0;
+    });
   }
+
   drawPiece(piece: Piece) {
-    for (let coord = 0; coord < piece.coords.length; coord++) {
-      this.grid[piece.coords[coord][0]][piece.coords[coord][1]] = piece.colorVal;
-    }
+    piece.coords.forEach(([row, col]) => {
+      this.grid[row][col] = piece.colorVal;
+    });
   }
-  updatePiece(piece: Piece) {
-    this.clearPiece(piece);
-    this.drawPiece(piece);
-  }
+
   drawGrid(fill: string, stroke: string, weight: number) {
     for (let row = 0; row < this.grid.length; row++) {
-    	for (let col = 0; col < this.grid[row].length; col++) {
+      for (let col = 0; col < this.grid[row].length; col++) {
         ctx.lineWidth = weight;
         ctx.strokeStyle = stroke;
         ctx.fillStyle = fill;
         for (let p = 0; p < this.colors.length; p++) {
-          if (this.grid[row][col] == p+1) {
+          if (this.grid[row][col] == p + 1) {
             ctx.fillStyle = this.colors[p];
           }
         }
-        ctx.fillRect(col*this.squareSize[0], row*this.squareSize[1], this.squareSize[0], this.squareSize[1]);
-        ctx.strokeRect(col*this.squareSize[0], row*this.squareSize[1], this.squareSize[0], this.squareSize[1]);
+        ctx.fillRect(col * this.squareSize[0], row * this.squareSize[1], this.squareSize[0], this.squareSize[1]);
+        ctx.strokeRect(col * this.squareSize[0], row * this.squareSize[1], this.squareSize[0], this.squareSize[1]);
       }
     }
   }
@@ -119,6 +189,12 @@ function movePiece(x: number, y: number) {
   game.drawPiece(currPiece);
 }
 
+function rotatePiece() {
+  game.clearPiece(currPiece);
+  currPiece.rotate(game);
+  game.drawPiece(currPiece);
+}
+
 window.addEventListener('keydown', keyDown);
 function keyDown(e: KeyboardEvent) {
   if (e?.defaultPrevented) {
@@ -131,7 +207,7 @@ function keyDown(e: KeyboardEvent) {
       break;
     case "ArrowUp":
     case "KeyW":
-      movePiece(0, -1);
+      rotatePiece();
       break;
     case "ArrowLeft":
     case "KeyA":
