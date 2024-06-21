@@ -2,6 +2,7 @@ import './style.css'
 
 const screen = document.querySelector('#screen') as HTMLCanvasElement;
 const ctx = screen.getContext('2d') as CanvasRenderingContext2D;
+const hud = document.querySelector('#hud') as HTMLDivElement;
 
 function setCanvasDimensions(heightRatio: number) {
   const cssHeight = window.getComputedStyle(screen).height;
@@ -49,6 +50,10 @@ const PIECES = [
    [0, 0, 0, 0]], 
 ];
 
+const KICK_TABLE: [number, number][][] = [
+  [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]], // Try no offset, then right, left, down, up
+];
+
 
 class Piece {
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
@@ -84,19 +89,28 @@ class Piece {
       this.shape.map(row => row[colIndex]).reverse()
     );
 
+    for (const [offsetX, offsetY] of KICK_TABLE[0]) { // Using the first set of offsets
+      const newCoords = this.getNewCoords(newShape, offsetX, offsetY);
+      if (this.isValidMove(newCoords, grid)) {
+        this.shape = newShape;
+        this.position[0] += offsetY;
+        this.position[1] += offsetX;
+        this.updateCoords();
+        return;
+      }
+    }
+  }
+
+  getNewCoords(newShape: number[][], offsetX: number, offsetY: number): [number, number][] {
     const newCoords = [];
     for (let row = 0; row < newShape.length; row++) {
       for (let col = 0; col < newShape[row].length; col++) {
         if (newShape[row][col] !== 0) {
-          newCoords.push([this.position[0] + row, this.position[1] + col] as [number, number]);
+          newCoords.push([this.position[0] + row + offsetY, this.position[1] + col + offsetX] as [number, number]);
         }
       }
     }
-
-    if (this.isValidMove(newCoords, grid)) {
-      this.shape = newShape;
-      this.updateCoords();
-    }
+    return newCoords;
   }
 
   move(x: number, y: number, grid: Grid) {
@@ -122,6 +136,7 @@ class Grid {
   grid;
   squareSize: [number, number] = [0, 0];
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
+  score: number = 0;
   // Normal Tetris Grid is 10x20
   constructor(rows: number, cols: number) {
     this.grid = Array.from({ length: rows }).map(() => Array.from({ length: cols }).map(() => 0));
@@ -147,6 +162,18 @@ class Grid {
     });
   }
 
+  destroyBlocks(): number {
+    const scores = [0, 40, 100, 300, 1200]
+    const newGrid = this.grid.filter(row => row.some(cell => cell === 0));
+    const fullRows = this.grid.length - newGrid.length;
+    for (let i = 0; i < fullRows; i++) {
+      newGrid.unshift(new Array(this.grid[0].length).fill(0));
+    }
+    this.grid = newGrid;
+    this.score += scores[fullRows];
+    return this.score;
+  }
+
   drawGrid(fill: string, stroke: string, weight: number) {
     for (let row = 0; row < this.grid.length; row++) {
       for (let col = 0; col < this.grid[row].length; col++) {
@@ -166,7 +193,7 @@ class Grid {
 }
 
 const game = new Grid(20, 10);
-const currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
+let currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
 game.addPiece(currPiece);
 
 function draw() {
@@ -179,14 +206,18 @@ function draw() {
 }
 
 function update() {
-  movePiece(0, 1);
+  if (!movePiece(0, 1)) {
+    currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
+    hud.textContent = "Score: " + game.destroyBlocks().toString();
+  }
 }
 setInterval(update, 1000);
 
 function movePiece(x: number, y: number) {
   game.clearPiece(currPiece);
-  currPiece.move(x, y, game);
+  const result: boolean = currPiece.move(x, y, game);
   game.drawPiece(currPiece);
+  return result;
 }
 
 function rotatePiece() {
@@ -207,6 +238,7 @@ function keyDown(e: KeyboardEvent) {
       break;
     case "ArrowUp":
     case "KeyW":
+    case "KeyF":
       rotatePiece();
       break;
     case "ArrowLeft":
