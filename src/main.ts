@@ -125,6 +125,18 @@ class Piece {
     }
   }
 
+  drop(grid: Grid) {
+    while (true) {
+      const newCoords = this.coords.map((value) => [value[0] + 1, value[1]] as [number, number]);
+      if (this.isValidMove(newCoords, grid)) {
+        this.position[0] += 1;
+        this.updateCoords();
+      } else {
+        break;
+      }
+    }
+  }
+
   isValidMove(newCoords: [number, number][], grid: Grid) {
     return newCoords.every(([row, col]) => {
       return row >= 0 && row < grid.grid.length && col >= 0 && col < grid.grid[0].length && grid.grid[row][col] === 0;
@@ -134,6 +146,7 @@ class Piece {
 
 class Grid {
   grid;
+  status: boolean = true;
   squareSize: [number, number] = [0, 0];
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
   score: number = 0;
@@ -143,11 +156,29 @@ class Grid {
     this.squareSize = [screen.width / cols, screen.height / rows];
   }
 
-  addPiece(piece: Piece) {
+  addPiece(piece: Piece): boolean {
     piece.updateCoords();
-    piece.coords.forEach(([row, col]) => {
-      this.grid[row][col] = piece.colorVal;
-    });
+    if (piece.isValidMove(piece.coords, this)) {
+      piece.coords.forEach(([row, col]) => {
+        this.grid[row][col] = piece.colorVal;
+      });
+      return true;
+    }
+
+    // Try placing at adjacent positions if the initial position is invalid
+    for (let x = 0; x < 11; x++) {
+      piece.position = [-1, x];
+      piece.updateCoords();
+      if (piece.isValidMove(piece.coords, this)) {
+        piece.coords.forEach(([row, col]) => {
+          this.grid[row][col] = piece.colorVal;
+        });
+        return true;
+      }
+    }
+
+    // If no valid position is found, return false to indicate game over
+    return false;
   }
 
   clearPiece(piece: Piece) {
@@ -174,6 +205,17 @@ class Grid {
     return this.score;
   }
 
+  gameOver() {
+    ctx.clearRect(0, 0, screen.width, screen.height);
+    ctx.filter = "blur(4px)";
+    this.drawGrid('black', 'white', 1);
+    ctx.filter = "none";
+    ctx.font = "48px serif";
+    ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.fillText("Game Over", screen.width / 2, screen.height / 2);
+  }
+
   drawGrid(fill: string, stroke: string, weight: number) {
     for (let row = 0; row < this.grid.length; row++) {
       for (let col = 0; col < this.grid[row].length; col++) {
@@ -197,11 +239,12 @@ let currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
 game.addPiece(currPiece);
 
 function draw() {
-  window.requestAnimationFrame(draw);
   ctx.clearRect(0, 0, screen.width, screen.height);
   game.clearPiece(currPiece);
   game.drawPiece(currPiece);
   game.drawGrid('black', 'white', 1);
+  if (game.status) {window.requestAnimationFrame(draw);}
+  else {game.gameOver();}
   ctx.stroke();
 }
 
@@ -209,15 +252,26 @@ function update() {
   if (!movePiece(0, 1)) {
     currPiece = new Piece(PIECES[Math.floor(Math.random()*PIECES.length)]);
     hud.textContent = "Score: " + game.destroyBlocks().toString();
+    if (!game.addPiece(currPiece)) {
+      game.status = false;
+      draw();
+      clearInterval(updateGame);
+    }
   }
 }
-setInterval(update, 1000);
+const updateGame = setInterval(update, 1000);
 
 function movePiece(x: number, y: number) {
   game.clearPiece(currPiece);
   const result: boolean = currPiece.move(x, y, game);
   game.drawPiece(currPiece);
   return result;
+}
+
+function dropPiece() {
+  game.clearPiece(currPiece);
+  currPiece.drop(game);
+  game.drawPiece(currPiece);
 }
 
 function rotatePiece() {
@@ -249,6 +303,9 @@ function keyDown(e: KeyboardEvent) {
     case "KeyD":
       movePiece(1, 0)
       break;
+    case "Space":
+    case "KeyG":
+      dropPiece();
   }
   e.preventDefault();
 }
