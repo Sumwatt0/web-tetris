@@ -1,6 +1,6 @@
 # Web Tetris
 
-[Play Now!][https://sumwatt0.github.io/web-tetris]
+[Play Now!](https://sumwatt0.github.io/web-tetris)
 
 This is a simple tetris game designed for the web.  
 
