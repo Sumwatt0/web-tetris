@@ -54,6 +54,7 @@ const KICK_TABLE: [number, number][][] = [
   [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]], // Try no offset, then right, left, down, up
 ];
 
+const COLORS: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
 
 class Piece {
   colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
@@ -63,10 +64,10 @@ class Piece {
   position: [number, number];
 
   constructor(shape: number[][], color?: string) {
-    if (color !== undefined && this.colors.includes(color)) {
-      this.colorVal = this.colors.indexOf(color) + 1;
+    if (color !== undefined && COLORS.includes(color)) {
+      this.colorVal = COLORS.indexOf(color) + 1;
     } else {
-      this.colorVal = Math.floor(Math.random() * this.colors.length) + 1;
+      this.colorVal = Math.floor(Math.random() * COLORS.length) + 1;
     }
     this.shape = shape.map((row) => row.map((value) => value == 1 ? this.colorVal : value));
     this.position = [-1, 3]; // starting position
@@ -148,7 +149,6 @@ class Grid {
   grid;
   status: boolean = true;
   squareSize: [number, number] = [0, 0];
-  colors: string[] = ['red', 'green', 'blue', 'purple', 'yellow'];
   score: number = 0;
   // Normal Tetris Grid is 10x20
   constructor(rows: number, cols: number) {
@@ -222,9 +222,9 @@ class Grid {
         ctx.lineWidth = weight;
         ctx.strokeStyle = stroke;
         ctx.fillStyle = fill;
-        for (let p = 0; p < this.colors.length; p++) {
+        for (let p = 0; p < COLORS.length; p++) {
           if (this.grid[row][col] == p + 1) {
-            ctx.fillStyle = this.colors[p];
+            ctx.fillStyle = COLORS[p];
           }
         }
         ctx.fillRect(col * this.squareSize[0], row * this.squareSize[1], this.squareSize[0], this.squareSize[1]);
